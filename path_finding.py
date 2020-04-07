@@ -25,7 +25,6 @@ def get_feasible_neighbors(current, grid, gridSize):
         position_y = current[1] + change[1]
         position = [position_x, position_y]
         feasible = True
-        index = 0
 
         if grid[position_x][position_y] == 'f' and feasible:
             neighbors.append([position_x, position_y])

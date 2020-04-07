@@ -19,6 +19,7 @@ class Game:
         self.width = window.get_width()
         self.height = window.get_height()
         self.window = window
+
         self.timer = {
             'Player_Movement': {'Value': 0, 'Period': 100, 'Function': self.player_movement_handler},
             'Enemies_Movement': {'Value': 0, 'Period': 500, 'Function': self.enemies_movement_handler},
@@ -26,7 +27,7 @@ class Game:
             'Projectiles': {'Value': 0, 'Period': 10, 'Function': self.projectiles_handler}
         }
         self.index = 0
-        self.screen_size = [15, 11]
+        self.screen_size = [15, 13]
         self.off_set = [int((self.screen_size[0]-1)/2), int((self.screen_size[1]-1)/2)]
         print(self.off_set)
         self.size_x = round(self.width / self.screen_size[0])
@@ -77,7 +78,6 @@ class Game:
         floor = pygame.transform.scale(floor, (self.size_x, self.size_y))
         self.floors.append(floor)
 
-
         self.wall = pygame.image.load(os.path.join("Game Images", "wall.png"))
         self.wall = pygame.transform.scale(self.wall, (self.size_x, self.size_y))
 
@@ -93,10 +93,9 @@ class Game:
         for key in self.feasible_positions:
             self.grid_tile[key] = np.random.choice(self.floors, p=[0.5, 0.15, 0.15, 0.15, 0.05])
 
-
         # Characters
         player = Character(get_random_from_dictionary(self.feasible_positions), 100, name='Bob')       # Player
-        player.equip(bow)
+        player.equip(sword)
         enemy1 = Character(get_random_from_dictionary(self.feasible_positions), 100, name='Spider')    # NPC 1
         enemy2 = Character(get_random_from_dictionary(self.feasible_positions), 100, name='Nelson')    # NPC 2
         # Dictionary containing all characters.
@@ -115,6 +114,7 @@ class Game:
         self.enemies_move = [None, None]
         self.move = None
         self.player_moved = False
+        self.dash = False
 
     def display_all(self):
         self.display_grid()
@@ -138,26 +138,29 @@ class Game:
     def display_character(self):
         dif = self.char.get_height() - self.size_x
         for [name, character] in self.characters.items():
-            change_x = character.pos[0] - self.characters['Player'].pos[0]
-            change_y = character.pos[1] - self.characters['Player'].pos[1]
-            if -self.off_set[0] <= change_x <= self.off_set[0] and -self.off_set[1] <= change_y <= self.off_set[1]:
-                pos_x = int((self.off_set[0] + change_x) * self.size_x)
-                pos_y = int((self.off_set[1] + change_y) * self.size_y)
+            distance_x = character.pos[0] - self.characters['Player'].pos[0]
+            distance_y = character.pos[1] - self.characters['Player'].pos[1]
+            if -self.off_set[0] <= distance_x <= self.off_set[0] and -self.off_set[1] <= distance_y <= self.off_set[1]:
+                pos_x = int((self.off_set[0] + distance_x) * self.size_x)
+                pos_y = int((self.off_set[1] + distance_y) * self.size_y)
+
                 if name == self.characters['Player'].current_enemy:
                     pygame.draw.rect(self.window, (255, 0, 0), (pos_x, pos_y, self.size_x, self.size_y), 1)
+
                 health = character.current_health
-                health_bar = int(80 * health / character.max_health)
+                health_bar = int(50 * health / character.max_health)
+
+                pygame.draw.rect(self.window, (0, 0, 0), (pos_x, pos_y, 50, 5))
                 if health >= 50:
-                    pygame.draw.rect(self.window, (0, 0, 0), (pos_x, pos_y, 80, 5))
                     pygame.draw.rect(self.window, (0, 255, 0), (pos_x, pos_y, health_bar, 5))
                 elif 25 <= health < 50:
-                    pygame.draw.rect(self.window, (0, 0, 0), (pos_x, pos_y, 80, 5))
                     pygame.draw.rect(self.window, (255, 165, 0), (pos_x, pos_y, health_bar, 5))
                 elif 0 < health < 25:
-                    pygame.draw.rect(self.window, (0, 0, 0), (pos_x, pos_y, 80, 5))
                     pygame.draw.rect(self.window, (255, 50, 0), (pos_x, pos_y, health_bar, 5))
+
                 pos_x = int(pos_x + params_translate[0][character.dir] * dif)
                 pos_y = int(pos_y + params_translate[1][character.dir] * dif)
+
                 self.window.blit(self.char_images[character.dir], [pos_x, pos_y])
 
     def display_projectiles(self):
@@ -197,18 +200,25 @@ class Game:
         return grid_coordinates
 
     def run(self):
-        clock = pygame.time.Clock()
+        clock = pygame.time.Clock()                 # Cria o clock do jogo.
+
+        # Inicia o loop do jogo.
         while self.play:
-            dt = clock.tick(60)
+            dt = clock.tick(60)                     # Seta o FPS, e retorna o tempo desde o último frame.
+
+            # Cuida dos timers.
             for timer_name in self.timer:
                 self.timer[timer_name]['Value'] += dt
                 if self.timer[timer_name]['Value'] >= self.timer[timer_name]['Period']:
                     self.timer[timer_name]['Value'] -= self.timer[timer_name]['Period']
                     self.timer[timer_name]['Function']()
 
+            # Coloca todas as texturas na tela.
             self.display_all()
 
+            # Cuida de todos os eventos do usuário que aconteceram.
             self.event_loop()
+
             if self.player_moved:
                 index = 0
                 for [name, character] in self.characters.items():
@@ -224,13 +234,13 @@ class Game:
             pygame.display.update()
 
     def combat_handler(self):
-        attack_range = self.characters['Player'].equipped_weapon.range
         if self.characters['Player'].is_attacking:
+            attack_range = self.characters['Player'].equipped_weapon.range
             if get_distance(self.characters['Player'].pos, self.characters[self.characters['Player'].current_enemy].pos) <= attack_range:
                 if attack_range == 1:
                     damage = self.characters['Player'].equipped_weapon.get_damage()
                     self.characters[self.characters['Player'].current_enemy].current_health -= damage
-                    if self.characters[self.characters['Player'].current_enemy].current_health < 0:
+                    if self.characters[self.characters['Player'].current_enemy].current_health < 0:         # Se morreu
                         del self.characters[self.characters['Player'].current_enemy]
                         self.characters['Player'].is_attacking = False
                 else:
@@ -258,6 +268,8 @@ class Game:
             self.player_moved = True
         else:
             self.player_moved = False
+            self.dash = False
+            self.timer['Player_Movement']['Period'] = 100
 
     def enemies_movement_handler(self):
         index = 0
@@ -286,6 +298,7 @@ class Game:
             self.projectiles['Player']['Tick'] += 1
 
     def event_loop(self):
+        # Passa por todos os eventos detectados no frame.
         for event in pygame.event.get():
 
             # Quit the game
@@ -312,8 +325,13 @@ class Game:
 
             # Keyboard checks.
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_UP:
-                    self.index += 1
+                if event.key == pygame.K_SPACE and not self.dash:
+                    self.move = Move(self.characters['Player'].dir)
+                    self.move.next = Move(self.characters['Player'].dir)
+                    self.move.next.next = Move(self.characters['Player'].dir)
+                    self.timer['Player_Movement']['Period'] = 30
+                    self.dash = True
+
                 for index in range(0, 4):
                     if event.key == moveEvents[index]:
                         self.move = Move(dir_names[index])

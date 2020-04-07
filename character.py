@@ -15,6 +15,7 @@ class Character:
             'Willpower': 1,
             'Vitality': 1
         }
+        self.skills = None
         self.level = level
 
         # Inventory and items variables
@@ -29,6 +30,7 @@ class Character:
         # Positional and movement variables
         self.pos = np.array(pos)
         self.dir = 'Up'
+
 
     def move(self, move, map_grid, characters):
         direction = move.direction
@@ -45,7 +47,6 @@ class Character:
             self.pos = new_pos
 
     def attack(self, enemy_name):
-        print('Attacking')
         if enemy_name == self.current_enemy:
             self.is_attacking = False
             self.current_enemy = None
@@ -55,6 +56,7 @@ class Character:
 
     def equip(self, weapon):
         self.equipped_weapon = weapon
+
 
 move_directions = {
     'Up':       [0, -1],
@@ -80,7 +82,6 @@ class Move:
         else:
             self.direction = direction
         self.next = None
-        self.previous = None
 
 
 class Moves:
